@@ -1,4 +1,5 @@
 from typing import List, Optional
+from Money import *
 
 class Budget:
     def __init__(self, budgetID: int, userID: str, name: str, totalPlannedAmnt: float, month: str, income: float):
@@ -106,6 +107,7 @@ class Category:
         self.plannedAmnt = amount
         self.plannedPercentage = None
         print(f"Category {self.categoryID} planned amount set to {amount}")
+
     def setPlannedPercentage(self, percentage: float, budgetIncome: float):
         self.plannedPercentage = percentage
         self.plannedAmnt = (percentage / 100) * budgetIncome
@@ -127,3 +129,41 @@ class BudgetTemplate:
         new_budget.calculateTotalPlannedAmnt()
         print(f"Budget created from template '{self.name}' for user {userID}")
         return new_budget
+
+
+class BudgetManager:
+    def __init__(self):
+        self.categories: dict[int, Category] = {}      
+        self.spending: dict[int, float] = {}           
+
+    def add_category(self, category: Category):
+        if category.categoryID not in self.categories:
+            self.categories[category.categoryID] = category
+            self.spending[category.categoryID] = 0.0
+            print(f"Category '{category.name}' added with limit ${category.categoryLimit:.2f}")
+        else:
+            print(f"Category '{category.name}' already exists.")
+
+    def record_transaction(self, transaction: Transaction):
+        cat_id = transaction.categoryID
+
+        if cat_id not in self.categories:
+            print(f"Transaction {transaction.transactionID} uses an unknown category (ID {cat_id}).")
+            return
+
+        amount = transaction.total
+        self.spending[cat_id] += amount
+        category = self.categories[cat_id]
+
+        print(f"Added ${amount:.2f} to '{category.name}'. "
+              f"Total spent: ${self.spending[cat_id]:.2f} / ${category.categoryLimit:.2f}")
+
+        if self.spending[cat_id] > category.categoryLimit:
+            print(f"WARNING: You’ve exceeded your monthly limit for '{category.name}'!\n")
+
+    def get_summary(self):
+        print("\nBudget Summary:")
+        for cat_id, category in self.categories.items():
+            spent = self.spending.get(cat_id, 0.0)
+            status = "Over Limit!" if spent > category.categoryLimit else "Within Limit"
+            print(f"  - {category.name}: ${spent:.2f} / ${category.categoryLimit:.2f} ({status})")

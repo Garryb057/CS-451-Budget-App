@@ -85,6 +85,8 @@ class Transaction:
         self.expenseType = expenseType
         print(f"Transaction {self.transactionID} tagged as {expenseType.value} expense")
 
+
+
 class TransactionManager:
     def __init__(self):
         self.transactions: List[Transaction] = []
@@ -168,6 +170,8 @@ class TransactionManager:
             'fixed_count': len(self.get_transactions_by_expense_type(ExpenseType.FIXED)),
             'variable_count': len(self.get_transactions_by_expense_type(ExpenseType.VARIABLE))
         }
+    
+
 
 class PayFrequency(Enum):
     DAILY = "daily"
@@ -319,3 +323,121 @@ class Income:
                 nextPayday += timedelta(days = self.customDays)
             paydays.append(nextPayday)
         return paydays
+    
+    #Added by Temka, commenting to find my code later easier for debugging. Part of Sprint 2.
+    def add_manual_transaction(transaction_manager: TransactionManager, userID: str, total: float, date_: date,
+                           payee: str, categoryID: int, notes: str = "", expenseType: ExpenseType = None):
+
+        new_transaction = Transaction(
+            transactionID=len(transaction_manager.transactions) + 1,
+            userID=userID,
+            total=total,
+            date=date_,
+            payee=payee,
+            categoryID=categoryID,
+            notes=notes,
+            isRecurring=False,
+            expenseType=expenseType
+        )
+
+        transaction_manager.add_transaction(new_transaction)
+
+        print(f"\nTransaction Added Successfully:")
+        print(f"  ID: {new_transaction.transactionID}")
+        print(f"  Payee: {new_transaction.payee}")
+        print(f"  Amount: ${new_transaction.total:.2f}")
+        print(f"  Category ID: {new_transaction.categoryID}")
+        print(f"  Date: {new_transaction.date}")
+        print(f"  Type: {new_transaction.expenseType.value if new_transaction.expenseType else 'Unspecified'}")
+        print(f"  Notes: {new_transaction.notes}\n")
+
+        return new_transaction
+    
+    #Added by Temka, commenting to find my code later easier for debugging. Part of Sprint 1.
+    def add_one_time_income(userID, name, amount, datePaid):
+        new_income = Income(
+            incomeID = 1,
+            userID = userID,
+            name = name,
+            amount = amount,
+            payFrequency = "one time",
+            datePaid = datePaid
+        )
+        print(f"Added one time income: {new_income.name} ${new_income.amount} on {new_income.datePaid}")
+        return new_income
+    
+    #Added by Temka, commenting to find my code later easier for debugging. Part of Sprint 1.
+    def calculate_total_monthly_income(income_sources, previousTotal):
+        currentTotal = previousTotal
+
+        for income_obj in income_sources:
+            amount = income_obj.amount
+            payFrequency = income_obj.payFrequency.lower()
+
+            if payFrequency == "weekly":
+                currentTotal += amount * 4
+            elif payFrequency == "biweekly":
+                currentTotal += amount * 2
+            elif payFrequency == "monthly":
+                currentTotal += amount
+            elif payFrequency == "annual":
+                currentTotal += amount / 12
+        
+        return currentTotal
+
+#Added by Temka, commenting to find my code later easier for debugging. Part of Sprint 2.
+class Expense:
+    def __init__(self, expenseID: int, userID: int, name: str, amount: float, category: str, payFrequency: str, startDate: date):
+        self.expenseID = expenseID
+        self.userID = userID
+        self.name = name
+        self.amount = amount
+        self.category = category
+        self.payFrequency = payFrequency.lower()
+        self.startDate = startDate
+        self.nextDate = startDate
+
+    def __str__(self):
+        return f"{self.name} ({self.category}) - ${self.amount:.2f} [{self.payFrequency.capitalize()}] Next: {self.nextDate}"
+
+    def get_next_occurrence(self):
+        if self.payFrequency == "weekly":
+            self.nextDate += timedelta(weeks=1)
+        elif self.payFrequency == "biweekly":
+            self.nextDate += timedelta(weeks=2)
+        elif self.payFrequency == "monthly":
+            new_month = self.nextDate.month + 1 if self.nextDate.month < 12 else 1
+            new_year = self.nextDate.year if self.nextDate.month < 12 else self.nextDate.year + 1
+            self.nextDate = self.nextDate.replace(year=new_year, month=new_month)
+        elif self.payFrequency == "annual":
+            self.nextDate = self.nextDate.replace(year=self.nextDate.year + 1)
+        return self.nextDate
+
+    def post_expense(self, expenses_list):
+        expenses_list.append({
+            "name": self.name,
+            "amount": self.amount,
+            "category": self.category,
+            "date": self.nextDate
+        })
+        print(f"Recurring expense '{self.name}' posted for {self.nextDate}.")
+        self.get_next_occurrence()
+
+#Added by Temka, commenting to find my code later easier for debugging. Part of Sprint 2.
+def add_recurring_transportation_expense(expenses, userID, name, amount, category, payFrequency, startDate=None):
+    if startDate is None:
+        startDate = date.today()
+    
+    new_expense = Expense(
+        expenseID=len(expenses),
+        userID=userID,
+        name=name,
+        amount=amount,
+        category=category,
+        payFrequency=payFrequency,
+        startDate=startDate
+    )
+
+    expenses.append(new_expense)
+    print(f"Transportation expense '{name}' added as a recurring {payFrequency} cost under '{category}'.")
+    return new_expense

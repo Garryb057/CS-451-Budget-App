@@ -195,3 +195,20 @@ class User:
             if dispute['id'] == disputeID:
                 dispute['status'] = new_status
                 break
+
+
+    #Added by Temka, commenting to find my code later easier for debugging. Part of Sprint 1.
+    def find_user_by_email(email, users):
+        for user in users:
+            if user.get_email() == email:
+                return user
+        return None
+
+    #Added by Temka, commenting to find my code later easier for debugging. Part of Sprint 1.
+    def login_user(email: str, password: str, users):
+        user = User.find_user_by_email(email, users)
+
+        if not user or user.get_passwordHash() != password:
+            return False, "Invalid email or password."
+        
+        return True, "Successful login."
