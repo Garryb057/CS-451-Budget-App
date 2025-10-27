@@ -74,6 +74,68 @@ class Budget:
                 category.plannedAmnt = (category.plannedPercentage / 100) * income
             self.calculateTotalPlannedAmnt()
     
+    def get_budget_data(self) -> dict:
+        return {
+        'budgetID': self.budgetID,
+        'name': self.name,
+        'totalPlannedAmnt': self.totalPlannedAmnt,
+        'month': self.month,
+        'income': self.income,
+        'categories': [
+            {
+                'categoryID': cat.categoryID,
+                'name': cat.name,
+                'type': cat.type,
+                'plannedAmnt': cat.plannedAmnt,
+                'plannedPercentage': cat.plannedPercentage
+            } for cat in self.categories
+        ]
+    }
+
+    #==========Part of sprint 4 by Temka, for the Budget user story.============
+    def update_category_amount(self, categoryID: int, newAmount: float) -> bool:
+        category = self.getCategoryByID(categoryID)
+        if category:
+            category.plannedAmnt = newAmount
+            category.plannedPercentage = None
+            self.calculateTotalPlannedAmnt()
+            print(f"Category '{category.name}' amount updated to ${newAmount:.2f}")
+            return True
+        else:
+            print(f"Category with ID {categoryID} not found.")
+            return False
+
+    def validate_budget_changes(self) -> tuple[bool, str]:
+        if self.totalPlannedAmnt < 0:
+            return False, "Total planned amount cannot be negative"
+        if not self.categories:
+            return False, "Budget must have at least one category"
+        for cat in self.categories:
+            if cat.plannedAmnt < 0:
+                return False, f"Category '{cat.name}' cannot have negative amount"
+        return True, "Budget is valid"
+
+    def save_budget_changes(self) -> tuple[bool, str]:
+        is_valid, message = self.validate_budget_changes()
+        if not is_valid:
+            return False, message
+        # Future implementation: save to database
+        print(f"Budget '{self.name}' changes saved successfully")
+        return True, "Budget saved successfully"
+
+    def discard_changes(self, original_data: dict):
+        self.name = original_data['name']
+        self.totalPlannedAmnt = original_data['totalPlannedAmnt']
+        self.month = original_data['month']
+        self.income = original_data['income']
+        for cat_data in original_data['categories']:
+            category = self.getCategoryByID(cat_data['categoryID'])
+            if category:
+                category.plannedAmnt = cat_data['plannedAmnt']
+                category.plannedPercentage = cat_data['plannedPercentage']
+        print(f"Budget '{self.name}' changes discarded")
+    #==========End of part of sprint 4 by Temka, for the Budget user story.============
+    
 class Category:
     def __init__(self, categoryID: int, name: str, type_: str, categoryLimit: float, plannedAmnt: float, plannedPercentage: float):
         self.categoryID = categoryID
@@ -113,7 +175,7 @@ class Category:
         self.plannedAmnt = (percentage / 100) * budgetIncome
         print(f"Category {self.categoryID} planned percentage set to {percentage}% (${self.plannedAmnt:.2f})")
 
-
+#Part of sprint 1 by Temka
 class BudgetTemplate:
     def __init__(self, templateID: int, name: str, description: str, categories: List[Category] = None):
         self.templateID = templateID
@@ -130,7 +192,7 @@ class BudgetTemplate:
         print(f"Budget created from template '{self.name}' for user {userID}")
         return new_budget
 
-
+#Part of sprint 3 by Temka
 class BudgetManager:
     def __init__(self):
         self.categories: dict[int, Category] = {}      
@@ -167,3 +229,38 @@ class BudgetManager:
             spent = self.spending.get(cat_id, 0.0)
             status = "Over Limit!" if spent > category.categoryLimit else "Within Limit"
             print(f"  - {category.name}: ${spent:.2f} / ${category.categoryLimit:.2f} ({status})")
+
+    #==Part of sprint 4 by Temka==
+    def get_spending_by_category(self, start_date: date = None, end_date: date = None) -> dict:
+        category_totals = {}
+        
+        for cat_id, category in self.categories.items():
+            spent = self.spending.get(cat_id, 0.0)
+            category_totals[category.name] = {
+                'amount': spent,
+                'categoryID': cat_id,
+                'limit': category.categoryLimit
+            }
+        
+        return category_totals
+
+    def get_chart_data(self, period: str = 'current_month') -> dict:
+        spending_data = self.get_spending_by_category()
+        
+        chart_data = {
+            'labels': [],
+            'amounts': [],
+            'colors': [],
+            'period': period
+        }
+        
+        for category_name, data in spending_data.items():
+            if data['amount'] > 0:  # Only include categories with spending
+                chart_data['labels'].append(category_name)
+                chart_data['amounts'].append(data['amount'])
+        
+        return chart_data
+    #==Part of sprint 4 by Temka==
+
+
+    

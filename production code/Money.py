@@ -171,6 +171,91 @@ class TransactionManager:
             'variable_count': len(self.get_transactions_by_expense_type(ExpenseType.VARIABLE))
         }
     
+    #====Part of sprint 4 by Temka====
+    def get_transactions_by_date_range(self, start_date: date, end_date: date) -> List[Transaction]:
+        return [t for t in self.transactions 
+                if start_date <= t.date <= end_date]
+
+    def get_spending_by_category_period(self, start_date: date, end_date: date) -> dict:
+        transactions = self.get_transactions_by_date_range(start_date, end_date)
+        category_spending = {}
+        
+        for transaction in transactions:
+            cat_id = transaction.categoryID
+            if cat_id not in category_spending:
+                category_spending[cat_id] = 0.0
+            category_spending[cat_id] += transaction.total
+        
+        return category_spending
+
+    def get_monthly_spending_chart_data(self, year: int, month: int) -> dict:
+        from calendar import monthrange
+        
+        start_date = date(year, month, 1)
+        last_day = monthrange(year, month)[1]
+        end_date = date(year, month, last_day)
+        
+        spending = self.get_spending_by_category_period(start_date, end_date)
+        
+        return {
+            'period': f"{year}-{month:02d}",
+            'spending': spending,
+            'start_date': start_date,
+            'end_date': end_date
+        }
+
+    def get_yearly_spending_chart_data(self, year: int) -> dict:
+        start_date = date(year, 1, 1)
+        end_date = date(year, 12, 31)
+        
+        spending = self.get_spending_by_category_period(start_date, end_date)
+        
+        monthly_breakdown = {}
+        for month in range(1, 13):
+            month_data = self.get_monthly_spending_chart_data(year, month)
+            monthly_breakdown[f"{year}-{month:02d}"] = month_data['spending']
+        
+        return {
+            'period': str(year),
+            'total_spending': spending,
+            'monthly_breakdown': monthly_breakdown,
+            'start_date': start_date,
+            'end_date': end_date
+        }
+
+    def get_category_transactions(self, categoryID: int, start_date: date = None, 
+                                end_date: date = None) -> List[Transaction]:
+        transactions = [t for t in self.transactions if t.categoryID == categoryID]
+        
+        if start_date and end_date:
+            transactions = [t for t in transactions 
+                        if start_date <= t.date <= end_date]
+        
+        return transactions
+
+    def get_category_detail_view(self, categoryID: int, start_date: date = None, 
+                                end_date: date = None) -> dict:
+        transactions = self.get_category_transactions(categoryID, start_date, end_date)
+        
+        total_spent = sum(t.total for t in transactions)
+        
+        return {
+            'categoryID': categoryID,
+            'total_spent': total_spent,
+            'transaction_count': len(transactions),
+            'transactions': [
+                {
+                    'transactionID': t.transactionID,
+                    'date': t.date,
+                    'payee': t.payee,
+                    'amount': t.total,
+                    'notes': t.notes,
+                    'expenseType': t.expenseType.value if t.expenseType else 'untagged'
+                } for t in transactions
+            ]
+        }
+    #=====End of part of sprint 4 by Temka====
+        
 
 
 class PayFrequency(Enum):
