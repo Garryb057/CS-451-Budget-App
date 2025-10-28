@@ -1,8 +1,11 @@
 from datetime import date
+from typing import List
+from Money import Transaction, TransactionManager
 
 class Dashboard:
-    def __init__ (self, userID):
-        self.userID = userID
+    def __init__ (self, userID, transactionManager: TransactionManager):
+       self.userID = userID
+       self.transactionManager = transactionManager
 
     #getters
     def get_userID (self):
@@ -15,9 +18,23 @@ class Dashboard:
     def get_monthly_summary(self, month: date) -> bool:
         #Future Implementation
         return True
-    def get_recent_transaction(self) -> bool:
-        #Future Implementation
-        return True
+    def get_recent_transaction(self, limit: int = 10) -> List[Transaction]:
+        return self.transactionManager.get_recent_transactions(self.userID, limit)
+    def get_recent_transactions_widget_data(self, limit: int = 10) -> List[dict]:
+        recentTransactions = self.get_recent_transaction(limit)
+        widgetData = []
+
+
+        for transaction in recentTransactions:
+           widgetData.append({
+               'transactionID': transaction.transactionID,
+               'date': transaction.date,
+               'payee': transaction.payee,
+               'amount': transaction.total,
+               'category': transaction.categoryID
+           })
+        return widgetData
+
     def get_category_progress(self) -> bool:
         #Future Implementation
         return True

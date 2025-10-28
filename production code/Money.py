@@ -94,6 +94,16 @@ class TransactionManager:
         self.transactions.append(transaction)
     def get_transactions_by_expense_type(self, expenseType: ExpenseType) -> List[Transaction]:
         return [t for t in self.transactions if t.expenseType == expenseType]
+    def get_recent_transactions(self, userID: str, limit: int = 10) -> List[Transaction]:
+        userTransactions = [t for t in self.transactions if t.userID == userID]
+
+        userTransactions.sort(key=lambda t: t.date, reverse=True)
+        return userTransactions[:limit]
+    def get_transaction_by_id(self, transactionID: int) -> Optional[Transaction]:
+        for transaction in self.transactions:
+            if transaction.transactionID == transactionID:
+                return transaction
+            return None
     def get_expense_type_summary(self) -> dict:
         fixedTotal = sum(t.total for t in self.transactions if t.expenseType == ExpenseType.FIXED)
         variableTotal = sum(t.total for t in self.transactions if t.expenseType == ExpenseType.VARIABLE)
