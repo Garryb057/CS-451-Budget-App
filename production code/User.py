@@ -1,5 +1,6 @@
 import re
 from typing import Optional, Tuple
+from notificationSettings import NotificationSettings
 
 class User:
     def __init__(self, email, passwordHash, fname, lname, phoneNumber, dateCreated):
@@ -12,6 +13,7 @@ class User:
         self.disputes = []
         self.balance = 0.0
         self.isActive = True
+        self.notificationSettings = NotificationSettings(self.email)
 
     # getters
     def get_email(self):
@@ -26,6 +28,10 @@ class User:
         return self.phoneNumber
     def get_dateCreated(self):
         return self.dateCreated
+    def get_notification_settings(self) -> NotificationSettings:
+        return self.notificationSettings
+    def get_notification_summary(self) -> dict:
+        return self.notificationSettings.get_settings_summary()
     
     #setters
     def set_email (self, email):
@@ -195,7 +201,20 @@ class User:
             if dispute['id'] == disputeID:
                 dispute['status'] = new_status
                 break
-
+    def update_notification_preferences(self, category: str, channels: dict) -> Tuple[bool, str]:
+        try:
+            success = self.notification_settings.update_category_settings(
+                category,
+                push=channels.get('push'),
+                email=channels.get('email'),
+                sms=channels.get('sms')
+            )
+            if success:
+                return True, f"Notification preferences updated for {category}"
+            else:
+                return False, f"Failed to update {category} notifications"
+        except Exception as e:
+            return False, f"Error updating notification preferences: {str(e)}"
 
     #Added by Temka, commenting to find my code later easier for debugging. Part of Sprint 1.
     def find_user_by_email(email, users):
