@@ -205,3 +205,29 @@ class Dashboard:
         # Default to monthly
         return 'monthly'
  #==End of Part of sprint 4 by Temka, for later debugging==
+
+
+    #==Part of sprint 5 by Temka, for later debugging==
+    def get_budget_detail_page_data(self, budget: 'Budget', start_date: date, end_date: date) -> dict:
+
+        spending_data = self.transactionManager.get_spending_by_category_period(start_date, end_date)
+        
+        comparison = budget.get_full_budget_comparison(spending_data)
+        
+        health = budget.get_budget_health_summary(spending_data)
+        
+        return {
+            'budget_info': {
+                'budgetID': budget.budgetID,
+                'name': budget.name,
+                'month': budget.month,
+                'income': budget.income
+            },
+            'comparison': comparison,
+            'health_summary': health,
+            'period': {
+                'start': start_date,
+                'end': end_date
+            }
+        }
+    #==End of Part of sprint 5 by Temka, for later debugging==

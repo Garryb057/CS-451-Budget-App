@@ -9,7 +9,7 @@ class ExpenseType(Enum):
 class Transaction:
     def __init__ (self, transactionID: int, userID: str, total: float, date: date, 
                   payee: str, categoryID: int, notes: str = "", isRecurring: bool = False, 
-                  dateRecurr: date = None, expenseType: ExpenseType = None):
+                  dateRecurr: date = None, expenseType: ExpenseType = None, isTaxRelated: bool = False, isTravelRelated: bool = False):
         self.transactionID = transactionID
         self.userID = userID
         self.total = total
@@ -20,6 +20,8 @@ class Transaction:
         self.isRecurring = isRecurring
         self.dateRecurr = dateRecurr
         self.expenseType = expenseType
+        self.isTaxRelated = isTaxRelated
+        self.isTravelRelated = isTravelRelated
 
     #getters
     def get_transactionID(self):
@@ -64,6 +66,16 @@ class Transaction:
         self.dateRecurr = dateRecurr
     def set_expenseType(self, expenseType: ExpenseType):
         self.expenseType = expenseType
+
+    def set_isTaxRelated(self, isTaxRelated: bool):
+        self.isTaxRelated = isTaxRelated
+    def set_isTravelRelated(self, isTravelRelated: bool):
+        self.isTravelRelated = isTravelRelated
+    def get_isTaxRelated(self):
+        return self.isTaxRelated
+    def get_isTravelRelated(self):
+        return self.isTravelRelated
+
     
     def add_transaction(self) -> bool:
         #Future Implementation
@@ -85,6 +97,22 @@ class Transaction:
         self.expenseType = expenseType
         print(f"Transaction {self.transactionID} tagged as {expenseType.value} expense")
 
+    def flag_as_tax_related(self):
+        self.isTaxRelated = True
+        print(f"Transaction {self.transactionID} flagged as tax-related")
+
+    def unflag_tax_related(self):
+        self.isTaxRelated = False
+        print(f"Transaction {self.transactionID} unflagged from tax-related")
+    
+    def flag_as_travel(self):
+        self.isTravelRelated = True
+        print(f"Transaction {self.transactionID} flagged as travel-related")
+
+    def unflag_travel(self):
+        self.isTravelRelated = False
+        print(f"Transaction {self.transactionID} unflagged from travel. Reverted to category {self.categoryID}")
+
 
 
 class TransactionManager:
@@ -103,7 +131,7 @@ class TransactionManager:
         for transaction in self.transactions:
             if transaction.transactionID == transactionID:
                 return transaction
-            return None
+        return None
     def get_expense_type_summary(self) -> dict:
         fixedTotal = sum(t.total for t in self.transactions if t.expenseType == ExpenseType.FIXED)
         variableTotal = sum(t.total for t in self.transactions if t.expenseType == ExpenseType.VARIABLE)
@@ -265,7 +293,167 @@ class TransactionManager:
             ]
         }
     #=====End of part of sprint 4 by Temka====
+
+    #Sprint 5 part Temka Tax
+    def get_tax_related_transactions(self, start_date: date = None, end_date: date = None) -> List[Transaction]:
+        tax_transactions = [t for t in self.transactions if t.isTaxRelated]
         
+        if start_date and end_date:
+            tax_transactions = [t for t in tax_transactions 
+                            if start_date <= t.date <= end_date]
+        
+        return tax_transactions
+
+    def get_tax_summary(self, year: int = None) -> dict:
+        if year is None:
+            year = date.today().year
+        
+        start_date = date(year, 1, 1)
+        end_date = date(year, 12, 31)
+        
+        tax_transactions = self.get_tax_related_transactions(start_date, end_date)
+        
+        category_totals = {}
+        total_tax_expenses = 0.0
+        
+        for transaction in tax_transactions:
+            cat_id = transaction.categoryID
+            if cat_id not in category_totals:
+                category_totals[cat_id] = {
+                    'total': 0.0,
+                    'count': 0,
+                    'transactions': []
+                }
+            
+            category_totals[cat_id]['total'] += transaction.total
+            category_totals[cat_id]['count'] += 1
+            category_totals[cat_id]['transactions'].append({
+                'transactionID': transaction.transactionID,
+                'date': transaction.date,
+                'payee': transaction.payee,
+                'amount': transaction.total,
+                'notes': transaction.notes
+            })
+            
+            total_tax_expenses += transaction.total
+        
+        return {
+            'year': year,
+            'total_tax_expenses': total_tax_expenses,
+            'transaction_count': len(tax_transactions),
+            'category_breakdown': category_totals,
+            'period': {
+                'start': start_date,
+                'end': end_date
+            }
+        }
+
+    def export_tax_report(self, year: int = None) -> dict:
+        summary = self.get_tax_summary(year)
+        
+        return {
+            'report_type': 'Tax Expenses',
+            'tax_year': summary['year'],
+            'generated_date': date.today(),
+            'summary': summary,
+            'all_transactions': [
+                {
+                    'date': t.date.strftime('%Y-%m-%d'),
+                    'payee': t.payee,
+                    'amount': f"${t.total:.2f}",
+                    'category': t.categoryID,
+                    'notes': t.notes,
+                    'transactionID': t.transactionID
+                } for t in self.get_tax_related_transactions(
+                    date(summary['year'], 1, 1),
+                    date(summary['year'], 12, 31)
+                )
+            ]
+        }
+         #end of Sprint 5 part Temka Tax
+
+    #Another sprint 5 part Temka Travel
+    def get_travel_transactions(self, start_date: date = None, end_date: date = None) -> List[Transaction]:
+        travel_transactions = [t for t in self.transactions if t.isTravelRelated]
+        
+        if start_date and end_date:
+            travel_transactions = [t for t in travel_transactions 
+                                if start_date <= t.date <= end_date]
+        
+        return travel_transactions
+
+    def get_travel_summary(self, start_date: date = None, end_date: date = None) -> dict:
+        travel_transactions = self.get_travel_transactions(start_date, end_date)
+        
+        category_breakdown = {}
+        total_travel_spending = 0.0
+        
+        for transaction in travel_transactions:
+            cat_id = transaction.categoryID
+            if cat_id not in category_breakdown:
+                category_breakdown[cat_id] = {
+                    'total': 0.0,
+                    'count': 0
+                }
+            
+            category_breakdown[cat_id]['total'] += transaction.total
+            category_breakdown[cat_id]['count'] += 1
+            total_travel_spending += transaction.total
+        
+        return {
+            'total_travel_spending': total_travel_spending,
+            'transaction_count': len(travel_transactions),
+            'category_breakdown': category_breakdown,
+            'period': {
+                'start': start_date,
+                'end': end_date
+            },
+            'transactions': [
+                {
+                    'transactionID': t.transactionID,
+                    'date': t.date,
+                    'payee': t.payee,
+                    'amount': t.total,
+                    'categoryID': t.categoryID,
+                    'notes': t.notes
+                } for t in travel_transactions
+            ]
+        }
+
+    def bulk_flag_travel(self, transaction_ids: List[int]) -> Tuple[int, List[int]]:
+        success_count = 0
+        failed_ids = []
+        
+        for trans_id in transaction_ids:
+            transaction = self.get_transaction_by_id(trans_id)
+            if transaction:
+                transaction.flag_as_travel()
+                success_count += 1
+            else:
+                failed_ids.append(trans_id)
+        
+        return success_count, failed_ids
+
+    def bulk_unflag_travel(self, transaction_ids: List[int]) -> Tuple[int, List[int]]:
+        success_count = 0
+        failed_ids = []
+        
+        for trans_id in transaction_ids:
+            transaction = self.get_transaction_by_id(trans_id)
+            if transaction:
+                transaction.unflag_travel()
+                success_count += 1
+            else:
+                failed_ids.append(trans_id)
+        
+        return success_count, failed_ids
+
+    def filter_by_travel_flag(self, include_travel: bool = True) -> List[Transaction]:
+        if include_travel:
+            return [t for t in self.transactions if t.isTravelRelated]
+        else:
+            return [t for t in self.transactions if not t.isTravelRelated]
+    #end of Another sprint 5 part Temka Travel
 
 
 class PayFrequency(Enum):

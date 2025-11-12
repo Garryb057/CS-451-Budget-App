@@ -135,6 +135,80 @@ class Budget:
                 category.plannedPercentage = cat_data['plannedPercentage']
         print(f"Budget '{self.name}' changes discarded")
     #==========End of part of sprint 4 by Temka, for the Budget user story.============
+
+    #==========Part of sprint 5 by Temka============
+    def get_category_comparison(self, categoryID: int, actual_spent: float) -> dict:
+        category = self.getCategoryByID(categoryID)
+        if not category:
+            return None
+        
+        planned = category.plannedAmnt
+        difference = actual_spent - planned
+        percentage_used = (actual_spent / planned * 100) if planned > 0 else 0
+        
+        if actual_spent <= planned * 0.9:
+            status = "on_track"
+        elif actual_spent <= planned:
+            status = "near_limit"
+        else:
+            status = "over_budget"
+        
+        return {
+            'categoryID': categoryID,
+            'name': category.name,
+            'planned': planned,
+            'actual': actual_spent,
+            'difference': difference,
+            'percentage_used': round(percentage_used, 2),
+            'status': status
+        }
+
+    def get_full_budget_comparison(self, spending_data: dict) -> dict:
+        comparisons = []
+        total_planned = 0.0
+        total_actual = 0.0
+        
+        for category in self.categories:
+            actual_spent = spending_data.get(category.categoryID, 0.0)
+            comparison = self.get_category_comparison(category.categoryID, actual_spent)
+            if comparison:
+                comparisons.append(comparison)
+                total_planned += comparison['planned']
+                total_actual += comparison['actual']
+        
+        return {
+            'budgetID': self.budgetID,
+            'name': self.name,
+            'month': self.month,
+            'income': self.income,
+            'total_planned': total_planned,
+            'total_actual': total_actual,
+            'total_difference': total_actual - total_planned,
+            'categories': comparisons
+        }
+
+    def get_budget_health_summary(self, spending_data: dict) -> dict:
+        comparison = self.get_full_budget_comparison(spending_data)
+        
+        on_track_count = sum(1 for c in comparison['categories'] if c['status'] == 'on_track')
+        over_budget_count = sum(1 for c in comparison['categories'] if c['status'] == 'over_budget')
+        total_categories = len(comparison['categories'])
+        
+        if over_budget_count == 0:
+            overall_status = "healthy"
+        elif over_budget_count <= total_categories * 0.3:
+            overall_status = "caution"
+        else:
+            overall_status = "needs_attention"
+        
+        return {
+            'overall_status': overall_status,
+            'on_track_count': on_track_count,
+            'over_budget_count': over_budget_count,
+            'total_categories': total_categories,
+            'budget_utilization': round((comparison['total_actual'] / comparison['total_planned'] * 100), 2) if comparison['total_planned'] > 0 else 0
+        }
+    #==========End of part of sprint 5 by Temka============
     
 class Category:
     def __init__(self, categoryID: int, name: str, type_: str, categoryLimit: float, plannedAmnt: float, plannedPercentage: float):
@@ -191,6 +265,47 @@ class BudgetTemplate:
         new_budget.calculateTotalPlannedAmnt()
         print(f"Budget created from template '{self.name}' for user {userID}")
         return new_budget
+    
+    #===== part of Sprint 5 Temka
+    def get_template_description(self) -> str:
+        return self.description
+
+    def get_template_categories(self) -> List[dict]:
+        return [
+            {
+                'categoryID': cat.categoryID,
+                'name': cat.name,
+                'type': cat.type,
+                'suggestedAmount': cat.plannedAmnt,
+                'categoryLimit': cat.categoryLimit
+            } for cat in self.categories
+        ]
+
+    def clone_for_user(self, budgetID: int, userID: str, month: str, income: float = 0.0) -> Budget:
+        new_budget = Budget(
+            budgetID=budgetID,
+            userID=userID,
+            name=self.name,
+            totalPlannedAmnt=0.0,
+            month=month,
+            income=income
+        )
+        
+        # Clone categories with original suggested values
+        for cat in self.categories:
+            new_category = Category(
+                categoryID=cat.categoryID,
+                name=cat.name,
+                type_=cat.type,
+                categoryLimit=cat.categoryLimit,
+                plannedAmnt=cat.plannedAmnt,
+                plannedPercentage=cat.plannedPercentage
+            )
+            new_budget.categories.append(new_category)
+        
+        new_budget.calculateTotalPlannedAmnt()
+        return new_budget
+    #====end of part of Sprint 5 Temka
 
 #Part of sprint 3 by Temka
 class BudgetManager:
@@ -231,7 +346,7 @@ class BudgetManager:
             print(f"  - {category.name}: ${spent:.2f} / ${category.categoryLimit:.2f} ({status})")
 
     #==Part of sprint 4 by Temka==
-    def get_spending_by_category(self, start_date: date = None, end_date: date = None) -> dict:
+    def get_spending_by_category(self) -> dict:
         category_totals = {}
         
         for cat_id, category in self.categories.items():
@@ -260,7 +375,48 @@ class BudgetManager:
                 chart_data['amounts'].append(data['amount'])
         
         return chart_data
-    #==Part of sprint 4 by Temka==
+    #==End of Part of sprint 4 by Temka==
 
+
+ #===Part of Sprint 5 Temka
+class BudgetTemplateManager:
+    
+        def __init__(self):
+            self.templates: List[BudgetTemplate] = []
+            self._initialize_default_templates()
+        
+        def _initialize_default_templates(self):
+            fifty_thirty_twenty = BudgetTemplate(
+                templateID=1,
+                name="50/30/20 Budget",
+                description="Allocate 50% of income to needs, 30% to wants, and 20% to savings/debt."
+            )
+            
+            zero_based = BudgetTemplate(
+                templateID=2,
+                name="Zero-Based Budget",
+                description="Assign every dollar a job so income minus expenses equals zero."
+            )
+            
+            envelope = BudgetTemplate(
+                templateID=3,
+                name="Envelope Budget",
+                description="Divide spending into specific categories with strict limits."
+            )
+            
+            self.templates = [fifty_thirty_twenty, zero_based, envelope]
+        
+        def get_all_templates(self) -> List[BudgetTemplate]:
+            return self.templates
+        
+        def get_template_by_id(self, templateID: int) -> Optional[BudgetTemplate]:
+            return next((t for t in self.templates if t.templateID == templateID), None)
+        
+        def is_first_time_user(self, userID: str) -> bool:
+            #Future implementation: query database for user's budgets
+            print(f"Checking if user {userID} is first-time user")
+            return True  #Placeholder
+        
+        #====End of Sprint 5 part Temka
 
     
