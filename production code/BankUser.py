@@ -4,6 +4,8 @@ import mysql.connector
 import bcrypt
 import time
 import uuid
+from datetime import datetime, timedelta
+import secrets
 from BankDashboard import open_dashboard
 
 # Database connection
@@ -150,17 +152,86 @@ def logout_callback(root):
     entry_password.delete(0, tk.END)
     root.deiconify()
 
+#Function to verify the account of the user.
+def verify_account(token):
+    cursor.execute("SELECT token_expiry FROM bankUser WHERE verification_token=%s", (token,))
+    row = cursor.fetchone()
+
+    if not row:
+        messagebox.showerror("Error", "Invalid verification code.")
+        return
+
+    expiry = row[0]
+    if expiry is None or datetime.now() > expiry:
+        messagebox.showwarning("Expired Code", "This verification code has expired. Please request a new one.")
+        return
+
+    # Mark verified
+    cursor.execute("""
+        UPDATE bankUser
+        SET is_verified=1, verification_token=NULL, token_expiry=NULL
+        WHERE verification_token=%s
+    """, (token,))
+    db.commit()
+
+    messagebox.showinfo("Verified", "Your account has been successfully verified!")
+
+def start_verification_flow(parent_window):
+    from BankEmail import send_verification_email  # import from your email file
+    import random
+
+    # Generate a 6-digit code
+    token = str(random.randint(100000, 999999))
+    expiry = datetime.now() + timedelta(minutes=10)
+
+    # Store in database
+    cursor.execute("""
+        UPDATE bankUser
+        SET verification_token=%s, token_expiry=%s
+        WHERE email=%s
+    """, (token, expiry, current_user_email))
+    db.commit()
+
+    # Send the code by email
+    send_verification_email(current_user_email, token)
+
+    # Open the small entry window
+    show_verification_entry_window(parent_window)
+
+def show_verification_entry_window(parent_window):
+    win = tk.Toplevel(parent_window)
+    win.title("Verify Account")
+    win.geometry("300x150")
+    win.transient(parent_window)
+    win.grab_set()
+
+    tk.Label(win, text="Code sent to your email!", font=("Arial", 11, "bold")).pack(pady=5)
+    tk.Label(win, text="Enter the code below:").pack(pady=5)
+
+    code_entry = tk.Entry(win)
+    code_entry.pack(pady=2)
+
+    def submit_code():
+        token = code_entry.get().strip()
+        if not token:
+            messagebox.showwarning("Missing Code", "Please enter the verification code.")
+            return
+        verify_account(token)
+        win.destroy()
+
+    tk.Button(win, text="Verify", command=submit_code).pack(pady=10)
+
 # This shows the infomation of the settings to the user.
 def show_account_settings(parent_window):
     """Open a modal window showing account info and allow edits."""
     # fetch latest user info
-    cursor.execute("SELECT first_name, last_name, email, phone_number FROM bankUser WHERE email=%s", (current_user_email,))
+    cursor.execute("SELECT first_name, last_name, email, phone_number, is_verified FROM bankUser WHERE email=%s", (current_user_email,))
     row = cursor.fetchone()
     if not row:
         messagebox.showerror("Error", "Could not load user info.")
         return
 
-    fname, lname, email, phone = row
+    fname, lname, email, phone, is_verified = row
 
     settings_win = tk.Toplevel(parent_window)
     settings_win.title("Account Settings")
@@ -229,9 +300,41 @@ def show_account_settings(parent_window):
             logout_callback(root)
             return
 
+        # Once user info is updated, it will send out an alert email to the user's email address.
+        from BankEmail import send_alert_email
+        send_alert_email(
+            to_email=new_email,
+            subject="Your Account Information Was Updated",
+            body=(
+                "Hello,\n\nYour account information was recently updated.\n"
+                "If this was not you, please reset your password immediately."
+            )
+        )
         # No email change — success
         messagebox.showinfo("Success", "Account updated successfully.")
         settings_win.destroy()
+    
+    if is_verified == 1:
+        tk.Label(settings_win, text="✅ Account Verified", fg="green", font=("Arial", 10, "bold")).pack(pady=5)
+    else:
+        frame_verify = tk.Frame(settings_win)
+        frame_verify.pack(pady=5)
+
+        tk.Label(frame_verify, text="Not verified? ", fg="red").pack(side="left")
+
+        link_label = tk.Label(
+            frame_verify,
+            text="Click here to verify",
+            fg="blue",
+            cursor="hand2",
+            font=("Arial", 10, "underline")
+        )
+        link_label.pack(side="left")
+
+        # Clicking the link triggers the verification window
+        link_label.bind("<Button-1>", lambda e: start_verification_flow(settings_win))
+
+
 
     tk.Button(settings_win, text="Save Changes", command=save_changes).pack(pady=12)
     tk.Button(settings_win, text="Close", command=settings_win.destroy).pack()

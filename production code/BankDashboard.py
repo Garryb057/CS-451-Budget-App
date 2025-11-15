@@ -52,9 +52,9 @@ def open_dashboard(root, first_name, last_name, user_id, logout_callback, settin
     dashboard.bind_all("<Motion>", lambda e: update_activity())
 
     # Start inactivity check
-    check_inactivity(dashboard, root, logout_callback)
+    check_inactivity(dashboard, root, logout_callback, user_id, cursor)
 
-# Function for depositing money to the users balance.
+# Function for depositing money to the users balances.
 def deposit_money(user_id, db, cursor, balance_var):
     """Popup window for depositing money."""
     deposit_win = tk.Toplevel()
@@ -130,15 +130,27 @@ def update_user_balance(user_id, amount, db, cursor):
 def update_activity():
     SESSION["last_active"] = time.time()
 
-def check_inactivity(window, root, logout_callback):
+def check_inactivity(window, root, logout_callback, user_id, cursor):
     """Check every few seconds if the user has been inactive."""
     if SESSION["last_active"] is not None:
         elapsed = time.time() - SESSION["last_active"]
         if elapsed > SESSION_TIMEOUT:
+            from BankEmail import send_alert_email
+            cursor.execute("SELECT email FROM bankUser WHERE idbankUser = %s", (user_id,))
+            user_email = cursor.fetchone()[0]
+
+            
+
+            send_alert_email(
+                to_email=user_email,
+                subject="Logged Out Due to Inactivity",
+                body="You were automatically logged out due to inactivity. If this was not you, please check your account immediately."
+            )
+
             messagebox.showinfo("Session Expired", "You have been logged out due to inactivity.")
             logout(window, root, logout_callback)
             return
-    window.after(2000, lambda: check_inactivity(window, root, logout_callback))
+    window.after(2000, lambda: check_inactivity(window, root, logout_callback, user_id, cursor))
 
 def logout(dashboard_window, root, logout_callback):
     """Logs out and returns to login."""
@@ -146,3 +158,4 @@ def logout(dashboard_window, root, logout_callback):
     SESSION["last_active"] = None
     dashboard_window.destroy()
     logout_callback(root)
+
