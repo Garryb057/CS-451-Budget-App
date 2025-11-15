@@ -152,6 +152,7 @@ def check_inactivity(window, root, logout_callback, user_id, cursor):
             return
     window.after(2000, lambda: check_inactivity(window, root, logout_callback, user_id, cursor))
 
+
 def logout(dashboard_window, root, logout_callback):
     """Logs out and returns to login."""
     SESSION["token"] = None

@@ -2,7 +2,7 @@ import smtplib
 import os
 from email.mime.text import MIMEText
 
-# Read environment variables
+# Read environment variables. Make sure to enter these in your system before hand.
 SENDER_EMAIL = os.environ.get("EMAIL_USER")
 SENDER_PASSWORD = os.environ.get("EMAIL_PASS")
 
@@ -30,6 +30,7 @@ def send_verification_email(to_email, code):
         print("Email sending failed:", e)
         return False
     
+#Function to send an alert email to the user.
 def send_alert_email(to_email, subject, body):
     if not SENDER_EMAIL or not SENDER_PASSWORD:
         print("Missing email environment variables.")

@@ -314,6 +314,7 @@ def show_account_settings(parent_window):
         messagebox.showinfo("Success", "Account updated successfully.")
         settings_win.destroy()
     
+    #checks if the user is verified or not.
     if is_verified == 1:
         tk.Label(settings_win, text="✅ Account Verified", fg="green", font=("Arial", 10, "bold")).pack(pady=5)
     else:
@@ -331,7 +332,7 @@ def show_account_settings(parent_window):
         )
         link_label.pack(side="left")
 
-        # Clicking the link triggers the verification window
+        # Clicking the link triggers opens a verification window
         link_label.bind("<Button-1>", lambda e: start_verification_flow(settings_win))
 
 
