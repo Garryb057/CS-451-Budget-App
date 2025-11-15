@@ -177,14 +177,14 @@ def verify_account(token):
     messagebox.showinfo("Verified", "Your account has been successfully verified!")
 
 def start_verification_flow(parent_window):
-    from BankEmail import send_verification_email  # import from your email file
+    from BankEmail import send_verification_email
     import random
 
-    # Generate a 6-digit code
+    # Generates a 6-digit code for the user.
     token = str(random.randint(100000, 999999))
     expiry = datetime.now() + timedelta(minutes=10)
 
-    # Store in database
+    # this will then store it in the database.
     cursor.execute("""
         UPDATE bankUser
         SET verification_token=%s, token_expiry=%s
