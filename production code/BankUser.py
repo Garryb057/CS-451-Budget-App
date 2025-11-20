@@ -295,7 +295,7 @@ def show_account_settings(parent_window):
         if new_norm != old_norm:
             messagebox.showinfo("Email Changed", "Your email was changed. You will be logged out and need to login with the new email.")
             settings_win.destroy()
-            # force logout: close parent dashboard and show login
+            # force logout: close parent dashboard and show login.
             parent_window.destroy()
             logout_callback(root)
             return
@@ -334,8 +334,6 @@ def show_account_settings(parent_window):
 
         # Clicking the link triggers opens a verification window
         link_label.bind("<Button-1>", lambda e: start_verification_flow(settings_win))
-
-
 
     tk.Button(settings_win, text="Save Changes", command=save_changes).pack(pady=12)
     tk.Button(settings_win, text="Close", command=settings_win.destroy).pack()

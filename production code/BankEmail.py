@@ -54,7 +54,7 @@ def send_alert_email(to_email, subject, body):
         print("Email sending failed:", e)
         return False
     
-#making sure the email and app password are set.
+#Making sure the email and app password are set.
 if __name__ == "__main__":
     print("EMAIL_USER =", SENDER_EMAIL)
     print("EMAIL_PASS =", "SET" if SENDER_PASSWORD else "NOT SET")
